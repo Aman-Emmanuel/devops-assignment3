@@ -1,0 +1,364 @@
+Selenium + Jenkins Pipeline - Simplified with Jenkins Email
+Key Changes from Original Plan
+✅ Email via Jenkins - Using Jenkins Email Extension plugin (simpler)
+
+✅ Amazon Linux 2023 - Supports both Amazon Linux and Ubuntu
+
+✅ One-command setup - Automated installation script
+
+✅ send_email.py - Kept for local testing only, not used in pipeline
+
+The Complete Solution
+EC2 does everything:
+
+Runs Jenkins
+Serves website via Python HTTP server  
+Runs Selenium tests in Docker
+Jenkins emails results to git commit author
+---
+
+PHASE 1: Create Project Files
+File 1: setup_jenkins.sh - EC2 Setup Script
+One command installs everything:
+
+Java 11
+Jenkins
+Docker  
+Python 3
+Configures services
+Shows Jenkins password
+Supports Amazon Linux 2023
+
+File 2: run_tests.py - Selenium Test Script
+10 Test Cases:
+
+Homepage loads (HTTP 200)
+Page title correct
+Main heading exists
+Navigation menu present
+Footer exists
+Links are valid
+Images load correctly
+CSS is applied
+JavaScript works
+Page loads < 5 seconds
+Features:
+
+Headless Chrome
+Tests http://172.17.0.1:8000 (Docker host)
+Generates JSON test results
+pytest framework
+File 3: requirements.txt
+selenium==4.15.2
+pytest==7.4.3
+pytest-json-report==1.5.0
+File 4: Dockerfile
+FROM python:3.9-slim
+RUN apt-get update && apt-get install -y chromium chromium-driver
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY . .
+CMD ["pytest", "run_tests.py", "--json-report", "--json-report-file=test_results.json"]
+File 5: Jenkinsfile - Updated for Jenkins Email
+Pipeline Stages:
+
+Checkout - Get code from GitHub
+Start Server - Python HTTP server on port 8000  
+Build - Create Docker image
+Test - Run Selenium tests
+Stop Server - Kill HTTP server
+Post Actions - Email results via Jenkins plugin
+Key Features:
+
+Uses Jenkins Email Extension plugin
+Automatically emails git commit author
+Formats test results as HTML
+Always sends email (success or failure)
+File 6: config.py
+TEST_URL = "http://172.17.0.1:8000"
+TIMEOUT = 10
+HEADLESS = True
+File 7: index.html - Sample Website
+Simple HTML page to test against (if you don't have one)
+
+---
+
+PHASE 2: AWS EC2 Setup
+Step 1: Launch EC2 Instance
+AWS Console → EC2 → Launch Instance
+Settings:
+Name: Jenkins-Server
+AMI: Amazon Linux 2023 (or Ubuntu 22.04)
+Instance Type: t2.medium or t3.small
+Key Pair: Create new → Download .pem file
+Security Group:
+SSH (22) - Your IP
+Custom TCP (8080) - Anywhere
+HTTP (80) - Anywhere
+Storage: 20 GB
+Launch → Note Public IP
+Step 2: Connect via SSH
+Windows CMD:
+
+d:
+cd "University\semester 7\Dev Ops\class\devops A3"
+ssh -i jenkins-key.pem ec2-user@YOUR_IP
+Note: Use ec2-user for Amazon Linux or ubuntu for Ubuntu
+
+Step 3: Run Setup Script
+Upload and run:
+
+# Upload setup_jenkins.sh to EC2 (or copy-paste content)
+chmod +x setup_jenkins.sh
+./setup_jenkins.sh
+Script automatically:
+
+Installs everything
+Starts services  
+Displays Jenkins password
+Step 4: Access Jenkins
+Browser: http://YOUR_EC2_IP:8080
+Paste password from script
+Install suggested plugins
+Create admin user
+---
+
+PHASE 3: Configure Jenkins
+Step 1: Install Plugins
+Manage Jenkins → Plugins → Available:
+
+GitHub Integration Plugin
+Docker Pipeline Plugin
+Email Extension Plugin
+Install and restart.
+
+Step 2: Configure Email Extension
+Manage Jenkins → Configure System → Extended E-mail Notification:
+
+SMTP server: smtp.gmail.com
+SMTP Port: 587
+Credentials: Add → Username/Password
+ - Username: your_email@gmail.com
+ - Password: your_gmail_app_password
+Use TLS: ✓
+Default Content Type: text/html
+Default Recipients: ${GIT_COMMITTER_EMAIL}
+Scroll down to E-mail Notification:
+
+SMTP server: smtp.gmail.com
+Use SMTP Authentication: ✓
+User Name: your_email@gmail.com  
+Password: your_app_password
+Use SSL: ✓
+SMTP Port: 465
+Test Configuration → Save
+
+Step 3: Create Pipeline Job
+New Item → Selenium-Tests → Pipeline
+Build Triggers:
+☑ GitHub hook trigger for GITScm polling
+Pipeline:
+Definition: Pipeline script from SCM
+SCM: Git
+Repository URL: Your GitHub repo
+Branch: */main  
+Script Path: Jenkinsfile
+Save
+Step 4: GitHub Webhook
+GitHub Repo → Settings → Webhooks:
+
+URL: http://YOUR_EC2_IP:8080/github-webhook/
+Content type: application/json
+Events: Just the push event
+Add webhook
+
+---
+
+PHASE 4: Project Structure
+devops-A3/
+├── setup_jenkins.sh       NEW - EC2 setup script
+├── send_email.py          ✓ Already exists (for local testing)
+├── run_tests.py           NEW - Selenium tests
+├── config.py              NEW - Test configuration
+├── requirements.txt       NEW - Python dependencies
+├── Dockerfile             NEW - Docker configuration
+├── Jenkinsfile            NEW - Jenkins pipeline
+├── index.html             NEW - Sample website (if needed)
+├── style.css              (optional)
+└── README.md              UPDATE - Documentation
+---
+
+What I'll Create in Agent Mode
+setup_jenkins.sh - One-command EC2 setup
+run_tests.py - Complete 10 test cases
+Jenkinsfile - Pipeline with Jenkins email
+Dockerfile - Docker configuration
+requirements.txt - Dependencies
+config.py - Configuration
+index.html - Sample website (if needed)
+
+
+
+
+In your SSH session (already connected to EC2), run:
+nano setup_jenkins.sh
+Then copy the entire content from the setup_jenkins.sh file I created, paste it into nano, and press:
+Ctrl + X
+Y (to save)
+Enter
+
+
+In your SSH session:
+chmod +x setup_jenkins.sh
+Step 3: Run the Script
+./setup_jenkins.sh
+
+
+
+Step 1: Open Jenkins in Browser
+Go to: http://13.53.125.107:8080
+Step 2: Unlock Jenkins
+Paste the password: 24fae6a7cdce4107afac071999d1df71
+Click Continue
+Step 3: Install Plugins
+Click: "Install suggested plugins"
+⏱️ Wait 5-10 minutes while plugins install (don't close the browser!)
+Step 4: Create Admin User
+Fill in:
+Username: admin (or your choice)
+Password: (choose a strong password - SAVE IT!)
+Full Name: Your name
+Email: Your email
+Click Save and Continue
+Step 5: Instance Configuration
+Keep the default URL: http://13.53.125.107:8080/
+Click Save and Finish
+Step 6: Start Using Jenkins
+Click "Start using Jenkins"
+
+
+STEP 1: Install Required Plugins
+1. Click on "Manage Jenkins" (left sidebar)
+2. Click on "Plugins" (or "Manage Plugins")
+3. Click on "Available plugins" tab at the top
+4. In the search box, type and select these 3 plugins:
+Search for each one and CHECK the box:
+GitHub Integration Plugin
+Type: github integration
+Check the box next to it
+Docker Pipeline
+Type: docker pipeline
+Check the box next to it
+Email Extension Plugin
+Type: email extension
+Check the box next to it
+5. Click "Install" button (bottom right or top right)
+6. IMPORTANT: Check the box that says:
+☑ "Restart Jenkins when installation is complete and no jobs are running"
+⏱️ Wait 2-3 minutes for Jenkins to restart.
+
+
+
+
+STEP 2: Configure Email in Jenkins
+Part A: Configure Extended E-mail Notification
+Click "Manage Jenkins" (left sidebar)
+Click "Configure System" (or "System")
+Scroll down until you find "Extended E-mail Notification" section
+Fill in these settings:
+SMTP server: smtp.gmail.com
+SMTP Port: 587
+Click "Advanced" button (next to SMTP Port)
+Then configure:
+☑ Use SMTP Authentication
+User Name: your_email@gmail.com (the one you used for send_email.py)
+Password: your_app_password (the Gmail app password)
+☑ Use TLS
+Default Content Type: text/html
+Default Recipients: Leave empty for now
+Scroll down to "E-mail Notification" section (different from Extended E-mail above)
+SMTP server: smtp.gmail.com
+☑ Use SMTP Authentication
+User Name: your_email@gmail.com
+Password: your_app_password
+☑ Use SSL
+SMTP Port: 465
+Test email (optional):
+Check "Test configuration by sending test e-mail"
+Enter your email
+Click "Test configuration"
+Check if email arrives
+Click "Save" at the bottom
+
+
+
+Configure This Section:
+1. Add Credentials First:
+Click the "+ Add" button (next to the Credentials dropdown)
+A popup will appear. Fill in:
+Kind: Username with password
+Scope: Global
+Username: your_email@gmail.com (your actual Gmail address)
+Password: your_app_password (the Gmail app password from send_email.py)
+ID: gmail-smtp (just a name to identify it)
+Description: Gmail SMTP Credentials
+Click "Add"
+2. Select the Credential:
+In the Credentials dropdown, select the credential you just added (gmail-smtp)
+3. Check the boxes:
+☑ Use TLS (CHECK THIS - for port 587)
+❌ Use SSL (LEAVE UNCHECKED)
+❌ Use OAuth 2.0 (LEAVE UNCHECKED)
+Summary of what you should have:
+SMTP server: smtp.gmail.com ✓
+SMTP Port: 587 ✓
+Credentials: gmail-smtp (the one you just added) ✓
+☑ Use TLS ✓
+☐ Use SSL
+☐ Use OAuth 2.0
+Start by clicking that "+ Add" button! Then follow the steps above.
+Let me know when done! 📧
+
+
+
+
+🚀 Next Steps - Set Up Jenkins Pipeline:
+STEP 1: Create Jenkins Pipeline Job
+Go to Jenkins: http://13.53.125.107:8080
+Click "New Item" (left sidebar)
+Configure:
+Name: Selenium-Tests
+Type: Select "Pipeline"
+Click "OK"
+In the configuration page:
+General Section:
+☑ GitHub project
+Project url: https://github.com/Abdullah-CH1/Devs-ops-demo-app/
+Build Triggers:
+☑ GitHub hook trigger for GITScm polling
+Pipeline Section:
+Definition: Pipeline script from SCM
+SCM: Git
+Repository URL: https://github.com/Abdullah-CH1/Devs-ops-demo-app.git
+Credentials: - none - (public repo)
+Branch Specifier: */main
+Script Path: Jenkinsfile
+Click "Save"
+STEP 2: Add GitHub Webhook
+Go to GitHub: https://github.com/Abdullah-CH1/Devs-ops-demo-app/settings/hooks
+Click "Add webhook"
+Configure:
+Payload URL: http://13.53.125.107:8080/github-webhook/
+Content type: application/json
+Which events?: Select "Just the push event"
+☑ Active
+Click "Add webhook"
+STEP 3: Test the Pipeline!
+Make a small change and push:
+# Make a small changeecho "# DevOps CI/CD Pipeline Demo" > README.mdgit add README.mdgit commit -m "Add README"git push
+Watch Jenkins:
+Go to Jenkins Dashboard
+You'll see the pipeline trigger automatically!
+Watch it run through all stages
+Check your email (abdullahch_18@hotmail.com) for test results!
